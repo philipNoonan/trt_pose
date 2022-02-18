@@ -1,15 +1,14 @@
-# HVS Viewer OpenGL
-Software for hyperspectral imaging, running on Linux/Windows
+# Mocat trt_pose
+App to get and parse poses from kinect or realse cameras
 
 ## Dependencies
 Cuda
-Glew
 Glfw3
 GLM
-Ximea SDK
 OpenCV
 Nvidia TensorRT
-Nvidia Video SDK
+Librealsense2
+Kinect Azure SDK
 
 ## Installation
 ```
@@ -19,9 +18,9 @@ $ make -j4
 ```
 
 ## Running
-Ensure that super_resolution.onnx exists in the /models directory. On first run, tensorRT will generate an engine file for this model. This will take some time.
+Ensure that posenet onnx file exists in the /models directory. On first run, tensorRT will generate an engine file for this model. This will take some time.
 
 ```
-$ ./bin/app -p ./shaders -o ./data
+$ ./bin/app
 ```
 
