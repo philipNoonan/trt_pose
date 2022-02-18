@@ -1,0 +1,31 @@
+/*
+Compute Shader to move rgb8ui images into a float buffer
+Author: Philip Noonan (philip.noonan@outlook.com)
+Date Created: 10 Feb 2022
+*/
+
+#version 430
+
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout (binding = 0, r32f) writeonly uniform image2DArray imageTRT;
+
+layout(std430, binding = 0) buffer tensorData
+{
+    float tensorInput [];
+};
+
+void main(void) {
+    // CHECK IF OUT OF BOUNDS - PO2 should prevent that but need to check it!
+    // each thread reads in one pixel from the large and writes to a separate layer in the hypercube
+
+    ivec3 pix = ivec3(gl_GlobalInvocationID.xyz); 
+
+    int idx = pix.x + pix.y * 64 + pix.z * 64 * 64;
+
+    float data = tensorInput[idx];
+
+    imageStore(imageTRT, pix, vec4(data, 0, 0, 0));
+
+
+}

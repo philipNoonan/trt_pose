@@ -1,0 +1,5 @@
+.vscode/
+build/*
+models/*
+external/json/*
+data/
