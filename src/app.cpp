@@ -854,6 +854,8 @@ void App::mainLoop()
 			poses.push_back(obj_pose);
 
 			std::vector<float> detected_keypoints;
+			std::vector<float> detected_keypoints_render;
+
 			for (int i = 0; i < obj_pose.Keypoints.size(); i++) {
 				float depth = aligned_depth_frame.get_distance(obj_pose.Keypoints[i].x / 255.0f * 848.0f, obj_pose.Keypoints[i].y / 255.0f * 480.0f);
 				
@@ -868,6 +870,13 @@ void App::mainLoop()
 				//detected_keypoints.push_back(obj_pose.Keypoints[i].y);
 
 				detected_keypoints.push_back(point[2]);
+
+				
+
+				detected_keypoints_render.push_back(obj_pose.Keypoints[i].x);
+				detected_keypoints_render.push_back(obj_pose.Keypoints[i].y);
+
+				detected_keypoints_render.push_back(point[2]);
 			}
 
 			std::vector<float> detected_links;
@@ -888,12 +897,8 @@ void App::mainLoop()
 
 			outputPoseJson.push_back(tempJ);
 
-			//std::cout << tempJ.dump() << std::endl;
 
-
-
-
-			skeleton_keypoints->update(detected_keypoints.data(), 0, detected_keypoints.size());
+			skeleton_keypoints->update(detected_keypoints_render.data(), 0, detected_keypoints_render.size());
 
 
 			skeleton_links->update(detected_links.data(), 0, detected_links.size());
