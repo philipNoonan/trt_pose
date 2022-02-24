@@ -216,6 +216,29 @@ void App::mainLoop()
 
 	glEnable(GL_DEPTH_TEST);
 
+	// Parse args
+	CommandLineParser commandLineParser;
+
+
+	commandLineParser.parse(args);
+	if (commandLineParser.isSet("help")) {
+		commandLineParser.printHelp();
+		std::cin.get();
+		exit(0);
+	}
+	if (commandLineParser.isSet("bag")) {
+		ros_bag_filename_ = commandLineParser.getValueAsString("bag", "./data/20190423_161107.bag");
+	}
+	if (commandLineParser.isSet("output")) {
+		size_t pos = ros_bag_filename_.find(".bag");
+		std::string outputdir;
+		if (pos != std::string::npos) {
+			outputdir = ros_bag_filename_.substr(0, pos);
+		}
+		jsonFileName = commandLineParser.getValueAsString("output", outputdir + "_poses.json");
+
+	}
+
 	quad = new gl::Quad;
 	quad->updateVerts(1.0f, 1.0f);
 
@@ -838,11 +861,11 @@ void App::mainLoop()
 				float pixel[2] = { obj_pose.Keypoints[i].x / 255.0f * 848.0f , obj_pose.Keypoints[i].y / 255.0f * 480.0f };
 
 				rs2_deproject_pixel_to_point(point, &z_intrin, (float*)&pixel, depth);
-				//detected_keypoints.push_back(point[0]);
-				//detected_keypoints.push_back(point[1]);
+				detected_keypoints.push_back(point[0]);
+				detected_keypoints.push_back(point[1]);
 
-				detected_keypoints.push_back(obj_pose.Keypoints[i].x);
-				detected_keypoints.push_back(obj_pose.Keypoints[i].y);
+				//detected_keypoints.push_back(obj_pose.Keypoints[i].x);
+				//detected_keypoints.push_back(obj_pose.Keypoints[i].y);
 
 				detected_keypoints.push_back(point[2]);
 			}
@@ -892,7 +915,7 @@ void App::mainLoop()
 
 		}
 
-		//outputJsonFile << outputPoseJson.dump() << std::endl;
+		outputJsonFile << outputPoseJson.dump() << std::endl;
 
 
 
