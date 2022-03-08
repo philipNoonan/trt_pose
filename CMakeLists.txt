@@ -21,12 +21,13 @@ else()
 endif()
 
 project(mocat_trt LANGUAGES C CXX CUDA)
+
 set(CMAKE_VERBOSE_MAKEFILE ON)
 if (WIN32)
 
-if ("${CMAKE_VERSION}" VERSION_GREATER 3.6.3)
-    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
-endif ("${CMAKE_VERSION}" VERSION_GREATER 3.6.3)
+# if ("${CMAKE_VERSION}" VERSION_GREATER 3.6.3)
+#     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+# endif ("${CMAKE_VERSION}" VERSION_GREATER 3.6.3)
 
 endif()
 
@@ -47,6 +48,9 @@ find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
 find_package(CUDAToolkit REQUIRED)
+find_package(k4a REQUIRED)
+find_package(k4arecord REQUIRED)
+
 
 if (UNIX)
 
@@ -62,10 +66,11 @@ find_package(TensorRT REQUIRED)
 find_package(VideoSDK REQUIRED)
 
 find_package(realsense2 REQUIRED)
+find_package(k4a REQUIRED)
 include_directories(external/json/single_include/nlohmann)
 
 
-file(GLOB_RECURSE SRC "src/*")
+#file(GLOB_RECURSE SRC "src/*")
 file(GLOB_RECURSE GFX "graphics/*")
 file(GLOB_RECURSE SHD "shaders/*")
 file(GLOB_RECURSE HDR "include/*")
@@ -77,6 +82,7 @@ file(GLOB_RECURSE PAR "src/parse/*")
 list(APPEND SRC ${SHD})
 list(APPEND SRC ${GFX})
 list(APPEND SRC ${HDR})
+list(APPEND SRC ${PAR})
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -184,60 +190,39 @@ get_filename_component(DataName ${DataFile} NAME)
 	)
 endforeach()
 
-add_executable(${PROJECT_NAME} ${SRC})
+set(K4A_PROJECT_NAME ${PROJECT_NAME}_k4a)
+set(RS_PROJECT_NAME ${PROJECT_NAME}_rs)
 
-add_dependencies(${PROJECT_NAME} shaders models resources)
+add_executable(${K4A_PROJECT_NAME} ${SRC} src/app_k4a.cpp include/app_k4a.h)
+add_dependencies(${K4A_PROJECT_NAME} shaders models resources)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+add_executable(${RS_PROJECT_NAME} ${SRC} src/app_rs.cpp include/app_rs.h)
+add_dependencies(${RS_PROJECT_NAME} shaders models resources)
+
+
+set_target_properties(${K4A_PROJECT_NAME} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 set(CMAKE_CUDA_RUNTIME_LIBRARY Static)
 
-target_link_libraries(${PROJECT_NAME} ${CUDA_cudart_static_LIBRARY} )
-target_link_libraries(${PROJECT_NAME} ${CUDA_cuda_driver_LIBRARY} )
+target_link_libraries(${K4A_PROJECT_NAME} k4a::k4a k4a::k4arecord)
+target_link_libraries(${K4A_PROJECT_NAME} ${CUDA_cudart_static_LIBRARY} ${CUDA_cuda_driver_LIBRARY} GLEW::GLEW glfw ${VIDEO_SDK_LIBRARIES} ${TensorRT_LIBRARIES} ${OpenCV_LIBS} ${CUDA_cudart_static_LIBRARY} ${CUDA_cuda_driver_LIBRARY})
+target_include_directories(${K4A_PROJECT_NAME} PUBLIC "include" "graphics" "src/parse" ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${OpenCV_INCLUDE_DIRS} ${VIDEO_SDK_INCLUDE_PATHS} ${TensorRT_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} )
 
-message(STATUS "CUDA_rt static_lib " ${CUDA_cudart_static_LIBRARY})	  
-message(STATUS "CUDA_cuda_driver_lib " ${CUDA_cuda_driver_LIBRARY})	  
-message(STATUS "include dirs for cuda " ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})	  
-
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-
-target_include_directories(${PROJECT_NAME} PUBLIC "include")
-
-target_include_directories(${PROJECT_NAME} PUBLIC "graphics")
-target_include_directories(${PROJECT_NAME} PUBLIC "src/parse")
-
-target_include_directories(${PROJECT_NAME} PUBLIC ${OpenCV_INCLUDE_DIRS})
-
-target_link_libraries(${PROJECT_NAME} GLEW::GLEW)
-target_link_libraries(${PROJECT_NAME} glfw)
+target_link_libraries(${RS_PROJECT_NAME} realsense2::realsense-file realsense2::realsense2)
+target_link_libraries(${RS_PROJECT_NAME} ${CUDA_cudart_static_LIBRARY} ${CUDA_cuda_driver_LIBRARY} GLEW::GLEW glfw ${VIDEO_SDK_LIBRARIES} ${TensorRT_LIBRARIES} ${OpenCV_LIBS} ${CUDA_cudart_static_LIBRARY} ${CUDA_cuda_driver_LIBRARY})
+target_include_directories(${RS_PROJECT_NAME} PUBLIC "include" "graphics" "src/parse" ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${OpenCV_INCLUDE_DIRS} ${VIDEO_SDK_INCLUDE_PATHS} ${TensorRT_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} )
 
 if (UNIX)
-target_include_directories(${PROJECT_NAME} PUBLIC ${GLM_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ) # may case a DSO error on linux, use OPENGL_LIBRAIES instead
-
+	target_include_directories(${K4A_PROJECT_NAME} PUBLIC ${GLM_INCLUDE_DIRS} /usr/src/tensorrt/samples/common)
+	target_link_libraries(${K4A_PROJECT_NAME} ${OPENGL_LIBRARIES} ) # may case a DSO error on linux, use OPENGL_LIBRAIES instead
 endif()
 
-
 if (WIN32)
-
-	target_link_libraries(${PROJECT_NAME} ${OPENGL_gl_LIBRARY}) # may case a DSO error on linux, use OPENGL_LIBRAIES instead
-	target_link_libraries(${PROJECT_NAME} glm::glm)
-
+	target_link_libraries(${K4A_PROJECT_NAME} ${OPENGL_gl_LIBRARY}) # may case a DSO error on linux, use OPENGL_LIBRAIES instead
+	target_link_libraries(${K4A_PROJECT_NAME} glm::glm)
 endif()
 
 message(STATUS "nvenc static_lib " ${VIDEO_SDK_LIBRARIES})	
 message(STATUS "nvenc dirs " ${VIDEO_SDK_INCLUDE_PATHS})	
-    
-target_link_libraries(${PROJECT_NAME} ${VIDEO_SDK_LIBRARIES})
-target_include_directories(${PROJECT_NAME} PUBLIC ${VIDEO_SDK_INCLUDE_PATHS})
-
-target_include_directories(${PROJECT_NAME} PUBLIC ${TensorRT_INCLUDE_DIRS})
-
-target_link_libraries(${PROJECT_NAME} ${TensorRT_LIBRARIES})
-
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} )
-
-target_link_libraries(${PROJECT_NAME} ${CUDA_cudart_static_LIBRARY} )
-target_link_libraries(${PROJECT_NAME} ${CUDA_cuda_driver_LIBRARY} )
 
 message(STATUS "CUDA_rt static_lib " ${CUDA_cudart_static_LIBRARY})	  
 message(STATUS "CUDA_cuda_driver_lib " ${CUDA_cuda_driver_LIBRARY})	  
@@ -246,7 +231,10 @@ message(STATUS "include dirs for cuda " ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES
 message(STATUS "tensorrt libs" ${TensorRT_LIBRARIES})	  
 message(STATUS "tensorrt dirs " ${TensorRT_INCLUDE_DIRS})	
 
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-target_include_directories(${PROJECT_NAME} PUBLIC /usr/src/tensorrt/samples/common)
+message(STATUS "CUDA_rt static_lib " ${CUDA_cudart_static_LIBRARY})	  
+message(STATUS "CUDA_cuda_driver_lib " ${CUDA_cuda_driver_LIBRARY})	  
+message(STATUS "include dirs for cuda " ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})	 
 
-target_link_libraries(${PROJECT_NAME} realsense2::realsense-file realsense2::realsense2)
+
+
+

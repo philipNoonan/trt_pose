@@ -1,4 +1,4 @@
-#include "app.h"
+#include "app_rs.h"
 #include <cuda_gl_interop.h> // needs to be included after GL is included
 
 
