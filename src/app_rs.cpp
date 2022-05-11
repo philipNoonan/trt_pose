@@ -97,6 +97,11 @@ inline int ObjectPose::FindLink(uint32_t a, uint32_t b) const
 
 }
 
+void padTo(std::string& str, const size_t num, const char paddingChar = ' ')
+{
+	if (num > str.size())
+		str.insert(0, num - str.size(), paddingChar);
+}
 
 
 size_t getSizeByDim(const nvinfer1::Dims& dims)
@@ -528,7 +533,11 @@ void App::mainLoop()
 
 	GLuint error = glGetError();
 
-	outputJsonFile.open(jsonFileName, std::ios::out | std::ios::app | std::ios::ate);
+	outputJsonFile.open(jsonFileName, std::ios::out);
+
+	outputJsonFile << "{" << std::endl;
+
+	uint32_t frameNumber = 0;
 
 
 	while (!glfwWindowShouldClose(window_)) {
@@ -853,6 +862,7 @@ void App::mainLoop()
 
 			poses.push_back(obj_pose);
 
+			std::vector<int> detected_keypoints_IDs;
 			std::vector<float> detected_keypoints;
 			std::vector<float> detected_keypoints_render;
 
@@ -870,6 +880,8 @@ void App::mainLoop()
 				//detected_keypoints.push_back(obj_pose.Keypoints[i].y);
 
 				detected_keypoints.push_back(point[2]);
+
+				detected_keypoints_IDs.push_back(obj_pose.Keypoints[i].ID);
 
 				
 
@@ -891,6 +903,7 @@ void App::mainLoop()
 				{"Top", obj_pose.Top},
 				{"Right", obj_pose.Right},
 				{"Bottom", obj_pose.Bottom},
+				{"KeyPoint_IDs", detected_keypoints_IDs},
 				{"Keypoints", detected_keypoints},
 				{"Links", detected_links}
 			};
@@ -920,14 +933,20 @@ void App::mainLoop()
 
 		}
 
-		outputJsonFile << outputPoseJson.dump() << std::endl;
+		std::string frameCounter = std::to_string(frameNumber);
+
+		padTo(frameCounter, 10, '0');
 
 
+		outputJsonFile << " \"pose" + frameCounter + "\" : " << outputPoseJson.dump() << "," << std::endl;
+
+		frameNumber++;
 
 		glfwSwapBuffers(window_);
 
 	}
 
+	outputJsonFile << "}" << std::endl;
 
 
 
