@@ -538,6 +538,7 @@ void App::mainLoop()
 	outputJsonFile << "{" << std::endl;
 
 	uint32_t frameNumber = 0;
+	bool firstFrame = true;
 
 
 	while (!glfwWindowShouldClose(window_)) {
@@ -657,6 +658,11 @@ void App::mainLoop()
 
 		progs["imageToBuffer"]->use();
 		color_frame_->bindImage(0, 0, GL_READ_ONLY);
+
+		glm::vec2 scale = glm::vec2(1);
+		glm::ivec2 offset = glm::ivec2(0);
+		progs["imageToBuffer"]->setUniform("scale", scale);
+		progs["imageToBuffer"]->setUniform("offset", offset);
 
 		color_buffer_input->bind();
 		color_buffer_input->bindBase(0);
@@ -937,8 +943,13 @@ void App::mainLoop()
 
 		padTo(frameCounter, 10, '0');
 
-
-		outputJsonFile << " \"pose" + frameCounter + "\" : " << outputPoseJson.dump() << "," << std::endl;
+		if (firstFrame) {
+			outputJsonFile << " \"pose" + frameCounter + "\" : " << outputPoseJson.dump();
+			firstFrame = false;
+		}
+		else {
+			outputJsonFile << ",\n" << " \"pose" + frameCounter + "\" : " << outputPoseJson.dump();
+		}
 
 		frameNumber++;
 
@@ -946,7 +957,7 @@ void App::mainLoop()
 
 	}
 
-	outputJsonFile << "}" << std::endl;
+	outputJsonFile << "\n}" << std::endl;
 
 
 

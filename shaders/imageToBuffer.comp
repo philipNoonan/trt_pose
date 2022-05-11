@@ -15,17 +15,21 @@ layout(std430, binding = 0) buffer TensorData
     float tensorOutput [];
 };
 
+uniform vec2 scale;
+uniform ivec2 offset;
+
 
 void main(void) {
     // CHECK IF OUT OF BOUNDS - PO2 should prevent that but need to check it!
     // each thread reads in one pixel from the large and writes to a separate layer in the hypercube
 
-    ivec2 pix = ivec2(gl_GlobalInvocationID.xy); // coord of each pix in large
+    ivec2 pix = ivec2(vec2(gl_GlobalInvocationID.xy) * scale) + offset;
+    
 
     vec3 dataVals = vec3(imageLoad(inputImage, pix).xyz);
 
-    tensorOutput[pix.y * 256 + pix.x + (0 * 256 * 256)] = ((dataVals.x / 255.0f) - 0.485f) / 0.229f;
-    tensorOutput[pix.y * 256 + pix.x + (1 * 256 * 256)] = ((dataVals.y / 255.0f) - 0.456f) / 0.224f;
-    tensorOutput[pix.y * 256 + pix.x + (2 * 256 * 256)] = ((dataVals.z / 255.0f) - 0.406f) / 0.225f;
+    tensorOutput[gl_GlobalInvocationID.y * 256 + gl_GlobalInvocationID.x + (0 * 256 * 256)] = ((dataVals.x / 255.0f) - 0.485f) / 0.229f;
+    tensorOutput[gl_GlobalInvocationID.y * 256 + gl_GlobalInvocationID.x + (1 * 256 * 256)] = ((dataVals.y / 255.0f) - 0.456f) / 0.224f;
+    tensorOutput[gl_GlobalInvocationID.y * 256 + gl_GlobalInvocationID.x + (2 * 256 * 256)] = ((dataVals.z / 255.0f) - 0.406f) / 0.225f;
 
 }

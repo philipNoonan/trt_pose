@@ -97,7 +97,11 @@ inline int ObjectPose::FindLink(uint32_t a, uint32_t b) const
 
 }
 
-
+void padTo(std::string& str, const size_t num, const char paddingChar = ' ')
+{
+	if (num > str.size())
+		str.insert(0, num - str.size(), paddingChar);
+}
 
 size_t getSizeByDim(const nvinfer1::Dims& dims)
 {
@@ -220,6 +224,8 @@ bool App::openFile(std::string filename) {
 
 
 	fileLen = std::chrono::microseconds(fileLength).count();
+
+	fileHandle.seek_timestamp(std::chrono::microseconds(0), K4A_PLAYBACK_SEEK_BEGIN);
 
 	if (fileHandle.get_next_capture(&cap)) {
 		auto depthImage = cap.get_depth_image();
@@ -395,7 +401,7 @@ void App::mainLoop()
 	glGenVertexArrays(1, &vao_);
 	glBindVertexArray(vao_);
 
-	// Load rosbag
+	// Load mkv
 
 	openFile(k4a_mkv_filename_);
 
@@ -710,8 +716,12 @@ void App::mainLoop()
 
 	GLuint error = glGetError();
 
-	outputJsonFile.open(jsonFileName, std::ios::out | std::ios::app | std::ios::ate);
+	outputJsonFile.open(jsonFileName, std::ios::out);
 
+	outputJsonFile << "{" << std::endl;
+
+	uint32_t frameNumber = 0;
+	bool firstFrame = true;
 
 	while (!glfwWindowShouldClose(window_)) {
 
@@ -751,9 +761,17 @@ void App::mainLoop()
 		progs["imageToBuffer"]->use();
 		color_frame_->bindImage(0, 0, GL_READ_ONLY);
 
+		float sscale = 1.0f;
+		glm::vec2 scale = glm::vec2(float(image_width_ / sscale) / (256.0f), float(image_height_ / sscale) / (256.0f));
+		//glm::ivec2 offset = glm::ivec2((image_width_ / sscale) - 256, (image_height_ / sscale) - 256);
+		glm::ivec2 offset= glm::ivec2(0);
+		progs["imageToBuffer"]->setUniform("scale", scale);
+		progs["imageToBuffer"]->setUniform("offset", offset);
+
+
 		color_buffer_input->bind();
 		color_buffer_input->bindBase(0);
-		glDispatchCompute(GLHelper::divup(image_width_, 32), GLHelper::divup(image_height_, 32), 1);
+		glDispatchCompute(GLHelper::divup(256, 32), GLHelper::divup(256, 32), 1);
 		glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		progs["imageToBuffer"]->disuse();
 
@@ -955,6 +973,7 @@ void App::mainLoop()
 
 			poses.push_back(obj_pose);
 
+			std::vector<int> detected_keypoints_IDs;
 			std::vector<float> detected_keypoints;
 			std::vector<float> detected_keypoints_render;
 
@@ -983,7 +1002,7 @@ void App::mainLoop()
 				//detected_keypoints.push_back(obj_pose.Keypoints[i].y);
 
 				detected_keypoints.push_back(targetPoint.xyz.z);
-
+				detected_keypoints_IDs.push_back(obj_pose.Keypoints[i].ID);
 				
 
 				detected_keypoints_render.push_back(obj_pose.Keypoints[i].x);
@@ -1004,6 +1023,7 @@ void App::mainLoop()
 				{"Top", obj_pose.Top},
 				{"Right", obj_pose.Right},
 				{"Bottom", obj_pose.Bottom},
+				{"KeyPoint_IDs", detected_keypoints_IDs},
 				{"Keypoints", detected_keypoints},
 				{"Links", detected_links}
 			};
@@ -1033,14 +1053,26 @@ void App::mainLoop()
 
 		}
 
-		outputJsonFile << outputPoseJson.dump() << std::endl;
+		std::string frameCounter = std::to_string(frameNumber);
 
+		padTo(frameCounter, 10, '0');
+
+
+		if (firstFrame) {
+			outputJsonFile << " \"pose" + frameCounter + "\" : " << outputPoseJson.dump();
+			firstFrame = false;
+		}
+		else {
+			outputJsonFile << ",\n" << " \"pose" + frameCounter + "\" : " << outputPoseJson.dump();
+		}
+		frameNumber++;
 
 
 		glfwSwapBuffers(window_);
 
 	}
 
+	outputJsonFile << "\n}" << std::endl;
 
 
 
